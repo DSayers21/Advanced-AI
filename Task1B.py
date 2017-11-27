@@ -9,6 +9,17 @@ def GetDomainSize(Array):
          
      return len(UniqueInsts)
  
+def GetDomainVars(Array):
+     UniqueInsts = {}
+     Vars = []
+     for x in range(0, len(Array)):
+         UniqueInsts[Array[x]] = Array[x]
+         
+     for key in UniqueInsts.keys():
+         Vars.append(UniqueInsts[key])
+
+     return Vars
+ 
 #Returns count of full group
 def GetCount(Array, Value):
      CountTrue = {};
@@ -68,7 +79,6 @@ def PrintBayesNet(BayesNet, Padding):
 
 def LearnParamenters(BayesNet, BayesNetVars):
     for key in BayesNet.keys():
-    #for x in range(0, len(bn.keys())):
         CurrentKey =  key
         EqualsCount = CurrentKey.count('=')
         Vars = []
@@ -103,6 +113,162 @@ def LearnParamenters(BayesNet, BayesNetVars):
             
             AddToBayesNet(BayesNet, String, MaxLiklihood(Vars))
     PrintBayesNet(BayesNet, 40)
+################################################################################
+                            #Inference by enumeration
+################################################################################
+def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
+
+    #Get Variables
+    Vars = []
+    Vars.append(Statement.split("|",1)[0].split("(",1)[1].lower())
+    Vars.append(Statement.split("|",1)[1].split(",",1)[0])
+    
+    EqualsCount = Statement.count(',') 
+    
+    for x in range(0, EqualsCount):
+        if x == EqualsCount-1:
+            Vars.append(Statement.split(",",1)[1].split(")",1)[0])
+        else:
+            Vars.append(Statement.split(",",1)[1].split(",",1)[0])
+    print Vars
+    #Check for the hidden variables
+    HiddenVars = []
+    for key in BayesNetVars.keys():
+        Found = 0
+        Current = key
+        for x in range(0, len(Vars)):
+            if Vars[x].lower() == Current: 
+                Found = 1     
+        if Found == 0:
+            HiddenVars.append(Current) 
+    print HiddenVars
+    #End Check for the hidden variables    
+    #Get the BN base variables without true or false values
+    ProcessedBN = {}
+    for key in BayesNet.keys():
+        Statement1 = key
+        EqualsCount = key.count('=')
+        VarStruc = []
+        VarStruc.append(Statement1.split("=",1)[0])
+        if EqualsCount > 1:
+            VarStruc.append(Statement1.split("|",1)[1].split("=",1)[0])
+        #EqualsCount = Statement.count(,') 
+        #print EqualsCount
+        CommaCount = key.count(',')
+        for x in range(0, CommaCount):
+            VarStruc.append(Statement1.split(",",1)[1].split("=",1)[0])
+        ProcessedBN[VarStruc[0]] = VarStruc
+    print ProcessedBN
+    #End Get the BN base variables without true or false values
+    #Get the all the variables for the equation
+    LinkBN = {}
+    print "Test"
+    for x in range(0, len(HiddenVars)):
+        Position = -1
+        Current = HiddenVars[x]
+        for key in ProcessedBN.keys():
+            Varables = ProcessedBN[key]
+        
+            if Current in ProcessedBN[key]:
+                StringOC = Varables[0]
+                for y in range(1, len(Varables)):
+                    StringOC +=  Varables[y]
+                LinkBN[StringOC] = Varables
+                
+    print LinkBN
+    #Get the all the variables for the equation    
+        
+    #=P(b)[P(e)[P(a|b,e)P(j|a)P(m|a)]]    
+    for x in range(0, len(HiddenVars)):
+        Current = HiddenVars[x]
+        CurrentVar = BayesNetVars[HiddenVars[x]]
+        DomainSizeOfHidden = GetDomainSize(CurrentVar)
+        #print DomainSizeOfHidden
+        DomVars = GetDomainVars(CurrentVar)
+        List = []
+        for y in range(0, DomainSizeOfHidden):
+           List.append((Current + "=" + DomVars[y]))
+        #print List
+        
+    #Calculate
+    def GetValue(CurrentEqu, Cur, Val):
+        Output = ""
+        for x in range(0, len(CurrentEqu)):
+            if CurrentEqu[x] == Cur:
+                Output += Cur + "=" + Val
+        return Output
+    
+    #print "Loop Over: " + Cur
+    FullList = []
+    for key in LinkBN.keys():
+        if len(LinkBN[key])>1:
+            print LinkBN[key]
+            CurrentEqu = LinkBN[key]
+            EquationList = []
+            HiddenSide = 1
+            #Generate all hidden values
+            for x in range(0, len(CurrentEqu)): 
+                CurrentPos = CurrentEqu[x]
+                VarFull = ""
+
+                CurrentVar = BayesNetVars[CurrentPos]
+                DomVars = GetDomainVars(CurrentVar)
+                HiddenSide *= len(DomVars)
+                #print DomVars
+                for y in range(0, len(DomVars)):  
+
+                    if CurrentPos in HiddenVars:
+                        VarFull = CurrentPos + "=" + DomVars[y]
+                    else:
+                        if CurrentPos not in HiddenVars:
+                            VarFull = CurrentPos + "=" + DomVars[y]
+                    EquationList.append(VarFull)
+            if len(EquationList) > 0:
+                FullList.append(EquationList)
+                print EquationList
+    print FullList
+    #Join
+    MNA = FullList[0][0] + "|" + FullList[0][2]
+    MA = FullList[0][1] + "|" + FullList[0][3]
+    
+    NABE = FullList[1][0] + "|" + FullList[1][2] + "," + FullList[1][4]
+    ABE = FullList[1][1] + "|" + FullList[1][2] + "," + FullList[1][4]
+    NABNE = FullList[1][0] + "|" + FullList[1][2] + "," + FullList[1][5]
+    ABNE = FullList[1][1] + "|" + FullList[1][2] + "," + FullList[1][5]
+    
+    NANBE = FullList[1][0] + "|" + FullList[1][3] + "," + FullList[1][4]
+    ANBE = FullList[1][1] + "|" + FullList[1][3] + "," + FullList[1][4]
+    NANBNE = FullList[1][0] + "|" + FullList[1][3] + "," + FullList[1][5]
+    ANBNE = FullList[1][1] + "|" + FullList[1][3] + "," + FullList[1][5]
+    
+    
+    JNA = FullList[2][0] + "|" + FullList[2][2]
+    JA = FullList[2][1] + "|" + FullList[2][3]
+    
+    MNA = BayesNet[MNA]
+    MA = BayesNet[MA] 
+    
+    NABE = BayesNet[NABE]
+    ABE = BayesNet[ABE]
+    NABNE = BayesNet[NABNE]
+    ABNE = BayesNet[ABNE]
+    
+    NANBE = BayesNet[NANBE]
+    ANBE = BayesNet[ANBE]
+    NANBNE = BayesNet[NANBNE]
+    ANBNE = BayesNet[ANBNE]
+    
+    JNA = BayesNet[JNA]
+    JA = BayesNet[JA]
+    
+    B = (ABE*JA*MA + NABE*JNA*MNA)+(ABNE*JA*MA + NABNE*JNA*MNA)
+    NB = (ANBE*JA*MA + NANBE*JNA*MNA)+(ANBNE*JA*MA + NANBNE*JNA*MNA)
+    
+    Left = 1/(B+NB)*B
+    Right = 1/(NB+B)*NB
+    
+    print Statement, "=", "<",Left,",", Right,">"
+    
 ################################################################################
 #                                   Input
 ################################################################################
@@ -164,7 +330,7 @@ print "P(Windy|Outlook, Play): \t", MaxLiklihood(Vars)
 LearnParamenters(bn, BNvars)
 
 
-
+InferenceEnumeration("P(B|j,m)", bn, BNvars, "true")
 
 
 
