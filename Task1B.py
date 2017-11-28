@@ -116,8 +116,7 @@ def LearnParamenters(BayesNet, BayesNetVars):
 ################################################################################
                             #Inference by enumeration
 ################################################################################
-def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
-
+def GetVariables(Statement):             
     #Get Variables
     Vars = []
     Vars.append(Statement.split("|",1)[0].split("(",1)[1].lower())
@@ -130,19 +129,23 @@ def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
             Vars.append(Statement.split(",",1)[1].split(")",1)[0])
         else:
             Vars.append(Statement.split(",",1)[1].split(",",1)[0])
-    print Vars
+    return Vars          
+           
+def GetHiddenVariables(BayesNetVars, Variables):
     #Check for the hidden variables
     HiddenVars = []
     for key in BayesNetVars.keys():
         Found = 0
         Current = key
         for x in range(0, len(Vars)):
-            if Vars[x].lower() == Current: 
+            if Variables[x].lower() == Current: 
                 Found = 1     
         if Found == 0:
             HiddenVars.append(Current) 
-    print HiddenVars
-    #End Check for the hidden variables    
+    return HiddenVars
+    #End Check for the hidden variables      
+
+def GetBaynesNetWithoutVals(BayesNet):
     #Get the BN base variables without true or false values
     ProcessedBN = {}
     for key in BayesNet.keys():
@@ -158,51 +161,30 @@ def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
         for x in range(0, CommaCount):
             VarStruc.append(Statement1.split(",",1)[1].split("=",1)[0])
         ProcessedBN[VarStruc[0]] = VarStruc
-    print ProcessedBN
-    #End Get the BN base variables without true or false values
+    return ProcessedBN
+    
+def GetVarsForEqu(ProcessedBN, HiddenVars):
     #Get the all the variables for the equation
     LinkBN = {}
-    print "Test"
     for x in range(0, len(HiddenVars)):
-        Position = -1
         Current = HiddenVars[x]
         for key in ProcessedBN.keys():
             Varables = ProcessedBN[key]
-        
             if Current in ProcessedBN[key]:
                 StringOC = Varables[0]
                 for y in range(1, len(Varables)):
                     StringOC +=  Varables[y]
                 LinkBN[StringOC] = Varables
                 
-    print LinkBN
+    return LinkBN
     #Get the all the variables for the equation    
-        
-    #=P(b)[P(e)[P(a|b,e)P(j|a)P(m|a)]]    
-    for x in range(0, len(HiddenVars)):
-        Current = HiddenVars[x]
-        CurrentVar = BayesNetVars[HiddenVars[x]]
-        DomainSizeOfHidden = GetDomainSize(CurrentVar)
-        #print DomainSizeOfHidden
-        DomVars = GetDomainVars(CurrentVar)
-        List = []
-        for y in range(0, DomainSizeOfHidden):
-           List.append((Current + "=" + DomVars[y]))
-        #print List
-        
-    #Calculate
-    def GetValue(CurrentEqu, Cur, Val):
-        Output = ""
-        for x in range(0, len(CurrentEqu)):
-            if CurrentEqu[x] == Cur:
-                Output += Cur + "=" + Val
-        return Output
     
+def GetAllVarsAndVals(BayesNetVars, LinkBN, HiddenVars):
     #print "Loop Over: " + Cur
     FullList = []
     for key in LinkBN.keys():
         if len(LinkBN[key])>1:
-            print LinkBN[key]
+            #print LinkBN[key]
             CurrentEqu = LinkBN[key]
             EquationList = []
             HiddenSide = 1
@@ -225,8 +207,27 @@ def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
                     EquationList.append(VarFull)
             if len(EquationList) > 0:
                 FullList.append(EquationList)
-                print EquationList
-    print FullList
+                #print EquationList
+    return FullList
+
+def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
+
+    Vars = GetVariables(Statement)          
+    print "Vars = ", Vars   
+    HiddenVars = GetHiddenVariables(BayesNetVars, Vars)           
+    print "Hidden Vars = ", HiddenVars
+    
+    ProcessedBN = GetBaynesNetWithoutVals(BayesNet)
+    print "Processed Bayes Net = ", ProcessedBN
+    
+    LinkBN = GetVarsForEqu(ProcessedBN, HiddenVars)
+    print "LinkBN = ", LinkBN
+        
+    FullList = GetAllVarsAndVals(BayesNetVars, LinkBN, HiddenVars)
+    print "Full List = ", FullList
+    
+    #Automate This
+    
     #Join
     MNA = FullList[0][0] + "|" + FullList[0][2]
     MA = FullList[0][1] + "|" + FullList[0][3]
@@ -264,10 +265,13 @@ def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
     B = (ABE*JA*MA + NABE*JNA*MNA)+(ABNE*JA*MA + NABNE*JNA*MNA)
     NB = (ANBE*JA*MA + NANBE*JNA*MNA)+(ANBNE*JA*MA + NANBNE*JNA*MNA)
     
+    print Statement, " Before Norm =", "<",B,",", NB,">"
+    
     Left = 1/(B+NB)*B
     Right = 1/(NB+B)*NB
     
-    print Statement, "=", "<",Left,",", Right,">"
+    print Statement, " After Norm =", "<",Left,",", Right,">"
+    #End Automate This
     
 ################################################################################
 #                                   Input
