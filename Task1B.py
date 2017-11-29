@@ -1,4 +1,5 @@
 import numpy as np
+import random
 ################################################################################
                                     #Functions
 ################################################################################
@@ -205,7 +206,7 @@ def GetAllVarsAndVals(BayesNetVars, LinkBN, HiddenVars):
                         if CurrentPos not in HiddenVars:
                             VarFull = CurrentPos + "=" + DomVars[y]
                     EquationList.append(VarFull)
-            if len(EquationList) > 0:
+            if len(EquationList) > 1:
                 FullList.append(EquationList)
                 #print EquationList
     return FullList
@@ -272,7 +273,124 @@ def InferenceEnumeration(Statement, BayesNet, BayesNetVars, AssumedVal):
     
     print Statement, " After Norm =", "<",Left,",", Right,">"
     #End Automate This
+
+def GetDependents(bn, GeneratedVals, Tester):
+    ChildVarsOne = []
+    GSize = len(GeneratedVals.keys())
     
+    for key in bn.keys():
+        Count = 0
+        for Gkey in GeneratedVals.keys():
+            TestStr = Gkey +"="+ GeneratedVals[Gkey]
+            if TestStr in key and key != TestStr:
+                Count+=1
+                
+        if Count == GSize:
+            if Tester in key.split("|",1)[0]: #Ensure that the value of a is the true variant
+                ChildVarsOne.append(key)
+
+            
+    return ChildVarsOne
+
+def CheckValue(TestStr, RandVal, Key, GeneratedVals):
+    for key1 in bn.keys():
+        if key1 == TestStr : 
+            if RandVal < bn[TestStr]:
+                #print "True" + str(RandVal) + "=" + VarOne 
+                GeneratedVals[Key] = "true"
+            else:
+                #print "False" + str(RandVal) + "=" + VarOne 
+                GeneratedVals[Key] = "false"
+    return GeneratedVals
+
+def PriorSample(bn, BNvars, Tester):
+    #Get Vars
+    Variables = []
+    for key in BNvars.keys():
+        Variables.append(key)
+    #End Get Vars
+    
+    #Get all variables which don't depend on anything
+    GeneratedVals = {}
+    for key in BNvars.keys():
+        RandVal = random.random()
+        CurrentVar = BNvars[key]
+        DomVars = GetDomainVars(CurrentVar)
+        
+        for x in range(0, len(DomVars)):   
+            if DomVars[x] == Tester:
+                VarOne = key + "=" + DomVars[x] #One Var
+                for key1 in bn.keys():
+                    if key1 == VarOne : 
+                        if RandVal < bn[VarOne]:
+                            GeneratedVals[key] = "true"
+                        else:
+                            GeneratedVals[key] = "false"
+    #End: Get all variables which don't depend on anything
+    
+    #Get variables that depend on two single vars
+    Deps = GetDependents(bn, GeneratedVals, Tester)      
+    #print "Deps = ", Deps
+    for x in range(0, len(Deps)):   
+        RandVal = random.random()
+        CheckValue(Deps[x], RandVal, Deps[x][0], GeneratedVals)      
+    #print "Generated Values: ", GeneratedVals   
+    #End: Get variables that depend on two single var
+    
+    #Get Var that depends on One var which also depends on others
+    for key in BNvars.keys():
+        RandVal = random.random()
+        CurrentVar = BNvars[key]
+        DomVars = GetDomainVars(CurrentVar)
+        for x in range(0, len(Deps)):   
+            for y in range(0, len(DomVars)):   
+                if DomVars[y] == Tester:
+                    VarOne = key + "=" + DomVars[y] + "|" + Deps[x].split("|",1)[0]
+                    for key1 in bn.keys():
+                        if key1 == VarOne : 
+                            if RandVal < bn[VarOne]:
+                                GeneratedVals[key] = "true"
+                            else:
+                                GeneratedVals[key] = "false"
+    
+    #End: Get Var that depends on One var which also depends on others
+    #print "Generated Values: ", GeneratedVals   
+    return GeneratedVals
+    
+def GetNamedVals(Sample):
+    for key in Sample.keys():
+        Sample[key] = key + "=" + Sample[key]
+    return Sample
+
+def RejectionSampling(X, e, bn, N, BNvars, Tester):
+    NCount = 0
+    for x in range(0, N): 
+        Sample = PriorSample(bn, BNvars, Tester)
+        NamedSamples = GetNamedVals(Sample)
+        Count = 0
+        #Check if Sample is consistent with e
+        for y in range(0, len(e)): 
+            Current = e[y]
+            #print NamedSamples
+            for key in NamedSamples.keys():
+                if Current in NamedSamples[key]:
+                    Count += 1
+        if Count == len(e): #Sample is consistent with e
+            #print Sample
+            NCount += 1
+        #End: Check if Sample is consistent with e
+    List = {}
+    List["true"] = float(NCount)/float(N)
+    List["false"] = 1 -(float(NCount)/float(N))
+    
+    Left = 1/(List["true"]+List["false"])*List["true"]
+    Right = 1/(List["false"]+List["true"])*List["false"]
+    
+    print " After Norm =", "<",Left,",", Right,">"
+    
+    
+    return List
+
 ################################################################################
 #                                   Input
 ################################################################################
@@ -334,9 +452,14 @@ print "P(Windy|Outlook, Play): \t", MaxLiklihood(Vars)
 LearnParamenters(bn, BNvars)
 
 
-InferenceEnumeration("P(B|j,m)", bn, BNvars, "true")
+#InferenceEnumeration("P(B|j,m)", bn, BNvars, "true")
 
+ObservedVals = []
+ObservedVals.append("j=true")
+ObservedVals.append("m=true")
+#print ObservedVals
 
+RejectionSampling("b", ObservedVals, bn, 100, BNvars, "true")
 
 
 
