@@ -284,4 +284,8 @@ ObservedVals.append("m=true")
 Probs = RejectionSampling("b", ["j=true", "m=true"], bn, BNVars, 100000)
 print("B|j=true,m=true")
 print("After Norm =" + "<" + str(Probs["true"]) + "," + str(Probs["false"]) + ">")
+print("TESTING NETWORK")
+Probs = RejectionSampling("b", ["j=true", "m=true"], Testbn, BNVars, 100000)
+print("B|j=true,m=true")
+print("After Norm =" + "<" + str(Probs["true"]) + "," + str(Probs["false"]) + ">")
 ###############################################################################
