@@ -97,12 +97,15 @@ class BayesNode:
       SampledValue = None
       #Generate a random number
       randnum = random.random()
-      #Set Value to a base value of None
-      Value = None
+      #Set Values to a base value of []
+      Values = []
       #Check if the node has no paretns
       if len(self.Parents) == 0:
           #Set Value to the correct value from the bayesnet
-          Value = bn[self.GetGivenState("true")]
+          for x in self.States:
+              Values.append((x, bn[self.GetGivenState(x)]))
+          #print Values
+              
       else: #Node has parent node or nodes
           #Set ParentsString to being empty
           ParentsString = ""
@@ -121,15 +124,22 @@ class BayesNode:
                   ParentsString += "," #Then add a comma to the parentsString
           #Set the BNKey to being the current nodes name plus value and also 
           #the parents string      
-          BNKey = self.GetGivenState("true") + "|" + ParentsString
-          #Get the correct value from the bayesnet
-          Value = bn[BNKey]
+          for x in self.States:
+              BNKey = self.GetGivenState(x) + "|" + ParentsString
+              Values.append((x, bn[BNKey]))
+
+      #Sort Values, to ensure the smallest is always at the front of the list
+      Values = sorted(Values, key=lambda Values: Values[1])
+      #Loop through all values, look for first time condition is met
+      for x in range(0, len(Values)-1):
+          #Check if the random number is less than value
+          if randnum < Values[x][1]: 
+            SampledValue = self.GetGivenState(Values[x][0]) #If less than set to cur pos
+            continue
+      #If Sampled Value never got set    
+      if SampledValue == None: 
+          SampledValue = self.GetGivenState(Values[len(Values)-1][0]) #Set to last element
           
-      #Check if the random number is less than value
-      if randnum < Value: 
-        SampledValue = self.GetGivenState("true") #If it is set to true
-      else:
-        SampledValue = self.GetGivenState("false") #Else set to false
       #Set SampledState to being the same as sampled value        
       self.SampledState = SampledValue
       #Append the current sampled value to the list of samples
@@ -339,7 +349,9 @@ def RejectionSampling(QueryVar, ObservedVals, bn, BNVars, N):
                     else:
                         Counts[OnlyState] = 1
     #Get total amount of good samples
-    TotalGoodSamples = Counts["true"] + Counts["false"]
+    TotalGoodSamples = 0
+    for key in Counts.keys():
+        TotalGoodSamples += Counts[key]
     #Setup normalised counts dict
     NCounts = {}
     #Store the corresponding positions in counts into NCounts after being 
@@ -355,6 +367,10 @@ E = BayesNode("e", ["true", "false"], [])
 A = BayesNode("a", ["true", "false"], [B, E])
 M = BayesNode("m", ["true", "false"], [A])
 J = BayesNode("j", ["true", "false"], [A])
+
+#Samples = []
+#A.SampleVariable(Testbn, Samples)
+#print Samples
 #Setup BNVars array which points to the above nodes
 BNVars = [B, E, A, M, J]
 #Setup list of observed values
@@ -363,7 +379,7 @@ ObservedVals.append("j=true")
 ObservedVals.append("m=true")
 #Testing Network using bayesnet with known values
 #Generate the probability of b given j and m are both true
-Probs = RejectionSampling("b", ["j=true", "m=true"], Testbn, BNVars, 100000)
+Probs = RejectionSampling("b", ["j=true", "m=true"], Testbn, BNVars, 1000000)
 #Output the question
 print("B|j=true,m=true")
 #Output the calculated probability
@@ -371,7 +387,7 @@ print("After Norm =" + "<" + str(Probs["true"]) + "," + str(Probs["false"]) + ">
 
 #Bayes network with the learned values from parameter learning
 #Generate the probability of b given j and m are both true
-Probs = RejectionSampling("b", ["j=true", "m=true"], bn, BNVars, 100000)
+Probs = RejectionSampling("b", ["j=true", "m=true"], bn, BNVars, 1000000)
 #Output the question
 print("B|j=true,m=true")
 #Output the calculated probability
