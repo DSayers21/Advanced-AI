@@ -320,6 +320,7 @@ def RejectionSampling(QueryVar, ObservedVals, bn, BNVars, N):
         #                 relationships
         #N              = the total number of samples to be performed
     
+    print "Doing Rejection Sampling"
     #Do Sampling
     Sample = []
     #GoodSamples = []
@@ -379,11 +380,11 @@ ObservedVals.append("j=true")
 ObservedVals.append("m=true")
 #Testing Network using bayesnet with known values
 #Generate the probability of b given j and m are both true
-Probs = RejectionSampling("b", ["j=true", "m=true"], Testbn, BNVars, 1000000)
+#Probs = RejectionSampling("b", ["j=true", "m=true"], Testbn, BNVars, 1000000)
 #Output the question
-print("B|j=true,m=true")
+#print("B|j=true,m=true")
 #Output the calculated probability
-print("After Norm =" + "<" + str(Probs["true"]) + "," + str(Probs["false"]) + ">")
+#print("After Norm =" + "<" + str(Probs["true"]) + "," + str(Probs["false"]) + ">")
 
 #Bayes network with the learned values from parameter learning
 #Generate the probability of b given j and m are both true

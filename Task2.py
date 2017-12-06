@@ -21,11 +21,14 @@ def Markov( SeqArray , ProbDict):
             #Ot*T'*st-1
         Next = ProbDict[x] * ProbDict["T"].transpose() * Next
         #Prints the above operation
-        print ProbDict[x], " * ", ProbDict["T"].transpose(), " * ", Prev, " = ", Next
+        #Print first row in matrixs
+        print ProbDict[x][0], "   ", ProbDict["T"].transpose()[0], "   ", Prev[0], "\t   ", Next[0]
+        #Print second row in matrixs
+        print ProbDict[x][1], " * ", ProbDict["T"].transpose()[1], " * ", Prev[1], "\t = ", Next[1]
     #Sets Answer to be the Sum of the final "Next" Matrix    
     Answer = Next.sum()
     #Prints the answer then returns it
-    print Answer 
+    print "Probability: ", Answer 
     return Answer
 ###############################################################################
                                     #Data Sets           
@@ -52,6 +55,7 @@ ProbsT2["S0"] = np.matrix([[0.5], [0.5]])
 ###############################################################################
 #Init the VarList to a list type
 VarList = [];
+VarListT = ["OHot","OFreeze","OCold","OWarm"];
 #Output instruction message to user
 print "Type \"fin\" to finish your entered sequence." 
 #Input all elements
@@ -59,6 +63,7 @@ VarName = raw_input('Enter a variable name: ')
 while(VarName != "fin"):
     VarList.append(VarName)
     VarName = raw_input('Enter a variable name: ')
+
 ###############################################################################
 
 ###############################################################################
